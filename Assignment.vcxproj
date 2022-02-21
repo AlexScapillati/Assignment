@@ -107,6 +107,8 @@ copy "C:\ProgramData\TL-Engine\3rd Party\TL-Xtreme\shader\*.*" "$(OutDir)" &gt; 
       <WarningLevel>Level3</WarningLevel>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <Optimization>MaxSpeed</Optimization>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>C:\ProgramData\TL-Engine\lib;$(DXSDK_DIR)lib\x86;$(AdditionalLibraryDirectories);$(DXSDK_DIR)\include;</AdditionalLibraryDirectories>
@@ -136,6 +138,8 @@ copy "C:\ProgramData\TL-Engine\3rd Party\TL-Xtreme\shader\*.*" "$(OutDir)" &gt; 
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CollisionLineSweep.h" />
+    <ClInclude Include="Common.h" />
     <ClInclude Include="Math\CMatrix4x4.h" />
     <ClInclude Include="Math\CVector2.h" />
     <ClInclude Include="Math\CVector3.h" />

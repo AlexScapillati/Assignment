@@ -39,5 +39,9 @@
     <ClInclude Include="Math\MathHelpers.h">
       <Filter>Math</Filter>
     </ClInclude>
+    <ClInclude Include="thread_pool.h" />
+    <ClInclude Include="thread_queue.h" />
+    <ClInclude Include="CollisionLineSweep.h" />
+    <ClInclude Include="Common.h" />
   </ItemGroup>
 </Project>

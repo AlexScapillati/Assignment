@@ -1,185 +1,128 @@
 // Assignment.cpp: A program using the TL-Engine
 
+#include <iostream>
 #include <TL-Engine.h>	// TL-Engine include file and namespace
 
+#include "CollisionLineSweep.h"
+#include "Common.h"
 #include "thread_pool.h"
 
 #include "Math/CVector2.h"
-#include "Math/CVector3.h"
 #include "Math/MathHelpers.h"
 
-using namespace tle;
-
-I3DEngine* myEngine;
-
-struct SSphere
-{
-	IModel* mModel = nullptr;
-	TFloat32 mRadius = 1.f;
-	CVector2 mVelocity;
-	CVector2 mPosition;
-	CVector3 mColour;
-	uint8_t mHealth = 100;
-	char mName[];
-};
-
-
-//---------------------------------------------------------------------------------------------------------------------
-// Thread Pools
-//---------------------------------------------------------------------------------------------------------------------
-
-// A worker thread wakes up when work is signalled to be ready, and signals back when the work is complete.
-// Same condition variable is used for signalling in both directions.
-// A mutex is used to guard data shared between threads
-struct WorkerThread
-{
-	std::thread             thread;
-	std::condition_variable workReady;
-	std::mutex              lock;
-};
-
-// Data describing work to do by a worker thread - this task is collision detection between some sprites against some blockers
-struct UpdateSpheresWork
-{
-	bool complete = true;
-	SSphere* spheres; // The work is described simply as the parameters to the BlockSprites function
-	uint32_t numSpheres;
-	SSphere* blockers;
-	uint32_t numBlockers;
-};
-
-// A pool of worker threads, each with its associated work
-// A more flexible system could generalise the type of work that worker threads can do
-static const uint32_t MAX_WORKERS = 31;
-std::pair<WorkerThread, UpdateSpheresWork> mUpdateSpheresWorkers[MAX_WORKERS];
-uint32_t mNumWorkers;  // Actual number of worker threads being used in array above
-
-
-
-std::vector<SSphere> gSpheres;
-
-thread_pool TPool;
-
-bool bUsingMultithreading = true;
-
-constexpr uint32_t KNumOfSpheres = 1000;
-constexpr TFloat32 KRangeSpawn = 2000.f;
-constexpr TFloat32 KRangeVelocity = 100.f;
-constexpr TFloat32 KRangeRadius = 2.f;
-
-CVector2 KWallBoundsMax = CVector2(KRangeSpawn, KRangeSpawn);
-CVector2 KWallBoundsMin = -KWallBoundsMax;
-
-ICamera* myCamera;
-
-float frameTime;
 
 bool SceneSetup()
 {
+	gMovingSpheres.erase(gMovingSpheres.begin(), gMovingSpheres.end());
+	gBlockingSpheres.erase(gBlockingSpheres.begin(), gBlockingSpheres.end());
+
+	gMovingSpheres.reserve(KNumOfSpheres / 2);
+	gBlockingSpheres.reserve(KNumOfSpheres / 2);
+
+#ifdef _VISUALIZATION_ON
 	myCamera = myEngine->CreateCamera(kManual, 0.0f, 0.f, -2000.f);
-
-	gSpheres.reserve(KNumOfSpheres);
-
 	const auto sphereMesh = myEngine->LoadMesh("sphere.x");
+	const auto blockedMesh = myEngine->LoadMesh("SphereBlocked.x");
+#endif
 
 	for (auto i = 0u; i < KNumOfSpheres; ++i)
 	{
 		SSphere s;
 
-		s.mPosition = CVector2::Rand() * KRangeSpawn;
+		s.mRadius = Random(0.5f, KRangeRadius);
 
-		s.mModel = sphereMesh->CreateModel();
-
-		if (i < KNumOfSpheres / 2)
+		if (i >= KNumOfSpheres / 2)
 		{
 			s.mVelocity = CVector2::Rand() * KRangeVelocity;
+
+#ifdef _VISUALIZATION_ON
+			s.mModel = sphereMesh->CreateModel();
+			s.mModel->Scale(s.mRadius);
+#endif
+			gMovingSpheres.push_back(s);
 		}
 		else
 		{
 			s.mVelocity = CVector2(0.f, 0.f);
+
+#ifdef _VISUALIZATION_ON
+			s.mModel = blockedMesh->CreateModel();
+			s.mModel->Scale(s.mRadius);
+			s.mModel->SetPosition(s.mPosition.x, s.mPosition.y, 0.0f);
+#endif
+
+			gBlockingSpheres.push_back(s);
 		}
-
-		s.mRadius = Random(0.5f, KRangeRadius);
-
-		s.mModel->Scale(s.mRadius);
-
-		gSpheres.push_back(s);
 	}
+
+
+	CVector2 null;
+
+	for (auto& s : gMovingSpheres)
+	{
+		do
+		{
+			s.mPosition = CVector2::Rand() * KRangeSpawn;
+			s.mPosition += CVector2::Rand();
+			s.mPosition %= KRangeSpawn;
+		} while (CollisionLineSweep(&s, gBlockingSpheres.data(), gBlockingSpheres.data() + gBlockingSpheres.size(), null));
+#ifdef _VISUALIZATION_ON
+			s.mModel->SetPosition(s.mPosition.x, s.mPosition.y, 0.0f);
+#endif
+	}
+
+
+	for (auto& s : gBlockingSpheres)
+	{
+		do
+		{
+			s.mPosition = CVector2::Rand() * KRangeSpawn;
+			s.mPosition += CVector2::Rand();
+			s.mPosition %= KRangeSpawn;
+		} while (CollisionLineSweep(&s, gBlockingSpheres.data(), gBlockingSpheres.data() + gBlockingSpheres.size(), null));
+#ifdef _VISUALIZATION_ON
+			s.mModel->SetPosition(s.mPosition.x, s.mPosition.y, 0.0f);
+#endif
+	}
+
+	std::sort(gBlockingSpheres.begin(), gBlockingSpheres.end(), [](const SSphere& a, const SSphere& b) { return a.mPosition.x < b.mPosition.x; });
 
 	return true;
 }
 
 
-void Work(SSphere* start, SSphere* end)
+void Work(SSphere* start, SSphere* end, SSphere* blockersStart, SSphere* blockersEnd)
 {
 	auto sphere = start;
 
 	while (sphere != end)
 	{
-
 		//	// remove this
-	//	if(sphere->mHealth<=0)
-	//	{
-	//		// Copy the particle at the end of the collection over the current (dead) particle
-	//		// Do this for each collection of data. Don't step the current pointer forward.
-	//		--end;
-	//		*sphere = *end;
+		//	if(sphere->mHealth<=0)
+		//	{
+		//		// Copy the particle at the end of the collection over the current (dead) particle
+		//		// Do this for each collection of data. Don't step the current pointer forward.
+		//		--end;
+		//		*sphere = *end;
 
-	//		continue;
-	//	}
+		//		continue;
+		//	}
 
-		bool collided = false;
+
 		CVector2 surfaceNormal;
 
-		if (sphere->mPosition.x >= KWallBoundsMax.x ||
-			sphere->mPosition.x <= KWallBoundsMin.x)
-		{
-			surfaceNormal = CVector2(1.f, 0.f);
-			collided = true;
-		}
-		else if (sphere->mPosition.y >= KWallBoundsMax.y ||
-				sphere->mPosition.y <= KWallBoundsMin.y)
-		{
-			surfaceNormal = CVector2(0.f, 1.f);
-			collided = true;
-		}
+		auto collided = CollisionLineSweep(sphere, blockersStart, blockersEnd, surfaceNormal);
+		
 
-		if (!collided)
-		{
-			const auto othersStart = gSpheres.data();
-			const auto othersEnd = othersStart + gSpheres.size();
-			auto       other = othersStart;
+		if (collided) { sphere->mVelocity = Reflect(sphere->mVelocity, surfaceNormal); }
 
-			while (other != othersEnd)
-			{
-				if (other != sphere)
-				{
-					const auto v = other->mPosition - sphere->mPosition;
-					const auto mag = v.Magnitude();
-					const auto rad = other->mRadius + sphere->mRadius;
-					if (mag <= rad * rad * 100)
-					{
-						const auto n = CVector2(v.x / mag, v.y / mag);
-						surfaceNormal = n;
-						collided = true;
-						other->mHealth -= 20;
-						sphere->mHealth -= 20;
-						break;
-					}
-				}
-				other++;
-			}
-		}
+		sphere->mPosition += sphere->mVelocity ;
 
-		if (collided)
-		{
-			sphere->mVelocity = Reflect(sphere->mVelocity, surfaceNormal);
-		}
-
-		sphere->mPosition += sphere->mVelocity * frameTime;
+#ifdef _VISUALIZATION_ON
 		sphere->mModel->SetPosition(sphere->mPosition.x, sphere->mPosition.y, 0.0f);
+#endif
 
-		sphere++;
+		++sphere;
 	}
 
 	//// Resize arrays after any deletions
@@ -200,7 +143,7 @@ void UpdateThread(uint32_t thread)
 		}
 
 		// We have some work so do it...
-		Work(work.spheres, work.spheres + work.numSpheres);
+		Work(work.spheres, work.spheres + work.numSpheres, work.blockers, work.blockers + work.numBlockers);
 
 		{
 			// Flag the work is complete
@@ -218,17 +161,19 @@ void UpdateSpheres()
 	if (bUsingMultithreading)
 	{
 		const auto nThreads = TPool.n_threads();
-		const auto numSpheres = gSpheres.size();
+		const auto numSpheres = gMovingSpheres.size();
 		const auto spheresPerSection = numSpheres / (nThreads + 1);
 
-		auto spheres = gSpheres.data();
+		auto       spheres = gMovingSpheres.data();
+		const auto blockers = gBlockingSpheres.data();
 
-		for (int i = 0; i < nThreads; ++i)
+		for (uint32_t i = 0; i < nThreads; ++i)
 		{
 			auto& work = mUpdateSpheresWorkers[i].second;
-
 			work.numSpheres = spheresPerSection;
 			work.spheres = spheres;
+			work.blockers = blockers;
+			work.numBlockers = gBlockingSpheres.size();
 
 			// Flag the work as not yet complete
 			auto& workerThread = mUpdateSpheresWorkers[i].first;
@@ -244,8 +189,10 @@ void UpdateSpheres()
 			spheres += spheresPerSection;
 		}
 
+		const auto blockersEnd = blockers + gBlockingSpheres.size() - 1;
+
 		// do the remaining work
-		Work(spheres, spheres + spheresPerSection);
+		Work(spheres, spheres + spheresPerSection, blockers, blockersEnd);
 
 		// Wait for all the workers to finish
 		for (uint32_t i = 0; i < mNumWorkers; ++i)
@@ -261,7 +208,7 @@ void UpdateSpheres()
 	}
 	else
 	{
-		Work(&gSpheres[0], &gSpheres[gSpheres.size() - 1]);
+		Work(&gMovingSpheres[0], &gMovingSpheres[gMovingSpheres.size() - 1], &gBlockingSpheres[0], &gBlockingSpheres[gBlockingSpheres.size() - 1]);
 	}
 }
 
@@ -270,17 +217,23 @@ bool GameLoop()
 {
 	UpdateSpheres();
 
+#ifdef _VISUALIZATION_ON
+
 	myCamera->MoveZ(myEngine->GetMouseWheelMovement() * 100);
 	if (myEngine->KeyHit(Key_Escape)) return false;
 	if (myEngine->KeyHit(Key_Space)) bUsingMultithreading = !bUsingMultithreading;
+
+#endif
 
 	return true;
 }
 
 
 
+
 void main()
 {
+
 	srand(time(0));
 
 	//---------------------------------------------------------------------------------------------------------------------
@@ -288,7 +241,7 @@ void main()
 	//*********************************************************
 	// Start worker threads
 	mNumWorkers = std::thread::hardware_concurrency(); // Gives a hint about level of thread concurrency supported by system (0 means no hint given)
-	if (mNumWorkers == 0)  mNumWorkers = 8;
+	if (mNumWorkers == 0) mNumWorkers = 8;
 	--mNumWorkers; // Decrease by one because this main thread is already running
 	for (uint32_t i = 0; i < mNumWorkers; ++i)
 	{
@@ -296,6 +249,7 @@ void main()
 		mUpdateSpheresWorkers[i].first.thread = std::thread(&UpdateThread, i);
 	}
 
+#ifdef _VISUALIZATION_ON
 
 	// Create a 3D engine (using TLX engine here) and open a window for it
 	myEngine = New3DEngine(kTLXLegacy);
@@ -303,44 +257,71 @@ void main()
 
 	// Add default folder for meshes and other media
 	myEngine->AddMediaFolder("C:\\ProgramData\\TL-Engine\\Media");
-
-	/**** Set up your scene here ****/
-
-	SceneSetup();
-	
 	const auto font = myEngine->DefaultFont();
-
-	// The main game loop, repeat until engine is stopped
-	while (myEngine->IsRunning())
+#else
+	while (true)
 	{
-		// Draw the scene
-		myEngine->DrawScene();
+		auto begin = chrono::steady_clock::now();
+#endif
+		SceneSetup();
 
-		/**** Update your scene each frame here ****/
 
-		if (!GameLoop()) break;
-
-		static float t = .3f;
-
-		if (t < 0.f)
+#ifdef _VISUALIZATION_ON
+		// The main game loop, repeat until engine is stopped
+		while (myEngine->IsRunning())
+#else
+		for (int i = 0; i < 10000; ++i)
+#endif
 		{
+
+
+#ifdef _VISUALIZATION_ON
+
 			frameTime = myEngine->Timer();
-			t = .3f;
+			font->Draw("ms: " + std::to_string(totalTime), 10, 10);
+			font->Draw("FPS: " + std::to_string(1.0f / totalTime), 10, 20);
+			font->Draw("Work time: " + std::to_string(workTime), 10, 30);
+			font->Draw("Render time: " + std::to_string(renderingTime), 10, 40);
+			font->Draw("Multi threading: " + std::string(bUsingMultithreading ? "Yes" : "No"), 10, 50);
+
+			// Draw the scene
+			myEngine->DrawScene();
+
+			renderingTime = myEngine->Timer();
+#endif
+			/**** Update your scene each frame here ****/
+
+			if (!GameLoop()) break;
+
+#ifdef _VISUALIZATION_ON
+
+			workTime = myEngine->Timer();
+#endif
+
+			if (totalTime < 0) totalTime = frameTime + renderingTime + workTime;
+
+			static float t = .1f;
+			if (t < 0.f)
+			{
+				totalTime = frameTime + renderingTime + workTime;
+				t = .1f;
+			}
+			else t -= totalTime;
 		}
-		else t -= myEngine->Timer();
 
-		font->Draw("ms: " + std::to_string(frameTime), 10, 10);
-		font->Draw("FPS: " + std::to_string(1.0f / frameTime), 10, 20);
-		font->Draw("Multi threading: " + std::string(bUsingMultithreading ? "Yes" : "No"), 10, 30);
-	}
+#ifdef _VISUALIZATION_ON
+		// Delete the 3D engine now we are finished with it
+		myEngine->Delete();
+#else
+		auto end = chrono::steady_clock::now();
+		cout << "Time took = " << chrono::duration_cast<chrono::milliseconds>(end - begin).count() << "[ms]" << endl;
 
+		}
+#endif
 	for (uint32_t i = 0; i < mNumWorkers; ++i)
 	{
 		// Start each worker thread running the work method. Note the way to construct std::thread to run a member function
 		mUpdateSpheresWorkers[i].first.thread.detach();
 	}
 
-
-	// Delete the 3D engine now we are finished with it
-	myEngine->Delete();
-}
+	}

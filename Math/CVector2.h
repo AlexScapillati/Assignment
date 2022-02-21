@@ -60,11 +60,14 @@ public:
 	// Divide vector by scalar (scales vector);
     CVector2& operator/= (float s);
 
+    CVector2& operator%= (int s);
+
     float Magnitude() const;
 
 	float MagnitudeSqrt() const;
+	float InverseMagnitude() const;
 
-    // Returns a random vector with values in range [-1, 1]
+	// Returns a random vector with values in range [-1, 1]
     static CVector2 Rand();
 
     static CVector2 Up();

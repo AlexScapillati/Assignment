@@ -52,6 +52,19 @@ CVector2& CVector2::operator*= (float s)
 	return *this;
 }
 
+CVector2& CVector2::operator%=(int s)
+{
+	int x1 = x;
+	int y1 = y;
+	float x2 = x - x1;
+	float y2 = y - y1;
+	x1 %= s;
+	y1 %= s;
+	x = (float) x1 + x2;
+	y = (float) y1 + y2;
+	return *this;
+}
+
 float CVector2::Magnitude() const
 {
 	return x * x + y * y;
@@ -60,6 +73,12 @@ float CVector2::Magnitude() const
 float CVector2::MagnitudeSqrt() const
 {
 	return std::sqrt(x * x + y * y);
+}
+
+// Instead of calculating the magnitude of the vector, calculate the inverse square root using the Quake3 inverse square root algorithm
+float CVector2::InverseMagnitude() const
+{
+	return Q_rsqrt(x * x + y * y);
 }
 
 CVector2 CVector2::Rand()
