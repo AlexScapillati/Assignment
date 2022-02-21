@@ -75,6 +75,7 @@
       <FloatingPointModel>Fast</FloatingPointModel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <LanguageStandard>Default</LanguageStandard>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>C:\ProgramData\TL-Engine\lib;$(DXSDK_DIR)lib\x86;$(DXSDK_DIR)\include;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -108,7 +109,7 @@ copy "C:\ProgramData\TL-Engine\3rd Party\TL-Xtreme\shader\*.*" "$(OutDir)" &gt; 
       <Optimization>MaxSpeed</Optimization>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>C:\ProgramData\TL-Engine\lib;$(DXSDK_DIR)lib\x86;$(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\ProgramData\TL-Engine\lib;$(DXSDK_DIR)lib\x86;$(AdditionalLibraryDirectories);$(DXSDK_DIR)\include;</AdditionalLibraryDirectories>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <DataExecutionPrevention>
@@ -126,9 +127,22 @@ copy "C:\ProgramData\TL-Engine\3rd Party\TL-Xtreme\shader\*.*" "$(OutDir)" &gt; 
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Assignment.cpp" />
+    <ClCompile Include="Math\CMatrix4x4.cpp" />
+    <ClCompile Include="Math\CVector2.cpp" />
+    <ClCompile Include="Math\CVector3.cpp" />
+    <ClCompile Include="Math\CVector4.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Math\CMatrix4x4.h" />
+    <ClInclude Include="Math\CVector2.h" />
+    <ClInclude Include="Math\CVector3.h" />
+    <ClInclude Include="Math\CVector4.h" />
+    <ClInclude Include="Math\MathHelpers.h" />
+    <ClInclude Include="thread_pool.h" />
+    <ClInclude Include="thread_queue.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
