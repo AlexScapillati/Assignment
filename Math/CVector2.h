@@ -6,7 +6,6 @@
 
 #pragma once
 
-
 class CVector2
 {
 // Concrete class - public access
@@ -92,6 +91,7 @@ CVector2 operator- (const CVector2& v, const CVector2& w);
 
 // Vector-scalar multiplication & division
 CVector2 operator* (const CVector2& v, float s);
+CVector2 operator* (const CVector2& v,const CVector2& w);
 CVector2 operator* (float s, const CVector2& v);
 CVector2 operator/ (const CVector2& v, float s);
 

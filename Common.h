@@ -6,7 +6,7 @@
 #include <unistd.h>
 #endif
 
-//#define _VISUALIZATION_ON
+#define _VISUALIZATION_ON
 
 #include <condition_variable>
 #include <thread>
@@ -80,9 +80,9 @@ thread_pool TPool;
 
 bool bUsingMultithreading = true;
 
-constexpr uint32_t KNumOfSpheres = 1000;
+constexpr uint32_t KNumOfSpheres = 2000;
 constexpr float KRangeSpawn = 2000.f;
-constexpr float KRangeVelocity = .05f;
+constexpr float KRangeVelocity = 50.f;
 constexpr float KRangeRadius = 2.f;
 
 CVector2 KWallBoundsMax = CVector2(KRangeSpawn, KRangeSpawn);

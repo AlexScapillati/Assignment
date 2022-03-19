@@ -81,6 +81,7 @@ float CVector2::InverseMagnitude() const
 	return Q_rsqrt(x * x + y * y);
 }
 
+
 CVector2 CVector2::Rand()
 {
 	return CVector2(Random(-1.0f,1.0f), Random(-1.0f,1.0f));
@@ -124,6 +125,12 @@ CVector2 operator* (const CVector2& v, float s)
 {
 	return { v.x * s, v.y * s };
 }
+
+CVector2 operator*(const CVector2& v,const CVector2& w)
+	{
+	return { v.x * w.x, v.y * w.y };
+	}
+
 CVector2 operator* (float s, const CVector2& v)
 {
 	return { v.x * s, v.y * s };

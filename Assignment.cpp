@@ -110,13 +110,15 @@ void Work(SSphere* start, SSphere* end, SSphere* blockersStart, SSphere* blocker
 
 
 		CVector2 surfaceNormal;
-
-		auto collided = CollisionLineSweep(sphere, blockersStart, blockersEnd, surfaceNormal);
 		
-
-		if (collided) { sphere->mVelocity = Reflect(sphere->mVelocity, surfaceNormal); }
-
-		sphere->mPosition += sphere->mVelocity ;
+		if (Collision(sphere, blockersStart, blockersEnd, surfaceNormal))
+		{
+			sphere->mPosition -= sphere->mVelocity * totalTime * 4.f;
+			sphere->mVelocity = Reflect(sphere->mVelocity, surfaceNormal);
+		}
+		else
+			sphere->mPosition += sphere->mVelocity * totalTime;
+		
 
 #ifdef _VISUALIZATION_ON
 		sphere->mModel->SetPosition(sphere->mPosition.x, sphere->mPosition.y, 0.0f);
@@ -220,6 +222,10 @@ bool GameLoop()
 #ifdef _VISUALIZATION_ON
 
 	myCamera->MoveZ(myEngine->GetMouseWheelMovement() * 100);
+	myCamera->MoveLocalY(myEngine->KeyHeld(Key_W) * 1000.0f* totalTime);
+	myCamera->MoveLocalY(myEngine->KeyHeld(Key_S) * -1000.f* totalTime);
+	myCamera->MoveLocalX(myEngine->KeyHeld(Key_D) * 1000.0f* totalTime);
+	myCamera->MoveLocalX(myEngine->KeyHeld(Key_A) * -1000.f* totalTime);
 	if (myEngine->KeyHit(Key_Escape)) return false;
 	if (myEngine->KeyHit(Key_Space)) bUsingMultithreading = !bUsingMultithreading;
 
@@ -261,16 +267,17 @@ void main()
 #else
 	while (true)
 	{
-		auto begin = chrono::steady_clock::now();
 #endif
 		SceneSetup();
 
+		auto begin = chrono::steady_clock::now();
 
 #ifdef _VISUALIZATION_ON
 		// The main game loop, repeat until engine is stopped
 		while (myEngine->IsRunning())
 #else
-		for (int i = 0; i < 10000; ++i)
+		//for (int i = 0; i < 10000; ++i)
+		//while(1)
 #endif
 		{
 
