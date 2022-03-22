@@ -145,8 +145,6 @@ copy "C:\ProgramData\TL-Engine\3rd Party\TL-Xtreme\shader\*.*" "$(OutDir)" &gt; 
     <ClInclude Include="Math\CVector3.h" />
     <ClInclude Include="Math\CVector4.h" />
     <ClInclude Include="Math\MathHelpers.h" />
-    <ClInclude Include="thread_pool.h" />
-    <ClInclude Include="thread_queue.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

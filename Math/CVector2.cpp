@@ -52,6 +52,19 @@ CVector2& CVector2::operator*= (float s)
 	return *this;
 }
 
+CVector2& CVector2::operator%=(float s)
+{
+	int x1 = x;
+	int y1 = y;
+	float x2 = x - x1;
+	float y2 = y - y1;
+	x1 %= (int)s;
+	y1 %= (int)s;
+	x = (float)x1 + x2;
+	y = (float)y1 + y2;
+	return *this;
+}
+
 CVector2& CVector2::operator%=(int s)
 {
 	int x1 = x;
@@ -64,6 +77,8 @@ CVector2& CVector2::operator%=(int s)
 	y = (float) y1 + y2;
 	return *this;
 }
+
+
 
 float CVector2::Magnitude() const
 {
@@ -173,4 +188,9 @@ CVector2 Reflect(const CVector2& vec, const CVector2& surfaceNormal)
 {
 	const auto s = Normalise(surfaceNormal);
 	return vec - 2.0f * s * Dot(s, vec);
+}
+
+bool IsZero(const CVector2& v)
+{
+	return std::abs(v.x) + std::abs(v.y) < EPSILON;
 }

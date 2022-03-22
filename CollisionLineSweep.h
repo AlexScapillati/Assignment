@@ -1,10 +1,9 @@
 #pragma once
 
 #include "Common.h"
-#include "Math/CVector2.h"
 
 
-bool CollisionLineSweep(SSphere* sphere, SSphere* blockersStart, SSphere* blockersEnd, CVector2& surfaceNormal)
+SSphereCollisionInfo* CollisionLineSweep(SSphereCollisionInfo* sphere, CVector2& surfaceNormal)
 {
 	//////////////////////////////
 	///
@@ -18,7 +17,7 @@ bool CollisionLineSweep(SSphere* sphere, SSphere* blockersStart, SSphere* blocke
 	{
 		surfaceNormal = CVector2(1.f, 0.f);
 		sphere->mVelocity = Reflect(sphere->mVelocity, surfaceNormal);
-		return  true;
+		return  nullptr;
 	}
 
 	if (sphere->mPosition.y >= KWallBoundsMax.y ||
@@ -26,7 +25,7 @@ bool CollisionLineSweep(SSphere* sphere, SSphere* blockersStart, SSphere* blocke
 	{
 		surfaceNormal = CVector2(0.f, 1.f);
 		sphere->mVelocity = Reflect(sphere->mVelocity, surfaceNormal);
-		return true;
+		return nullptr;
 	}
 
 
@@ -36,13 +35,17 @@ bool CollisionLineSweep(SSphere* sphere, SSphere* blockersStart, SSphere* blocke
 	///
 	//////////////////////////////
 
+	auto blockersStart = gBlockingSpheresCollisionInfo.data();
+	auto blockersEnd = blockersStart + gBlockingSpheresCollisionInfo.size();
+
+
 	bool found = false;
 	auto s = blockersStart;
 	auto e = blockersEnd;
 
 	auto sr = sphere->mPosition.x + sphere->mRadius;
 
-	SSphere* m;
+	SSphereCollisionInfo* m;
 
 
 	do
@@ -73,9 +76,7 @@ bool CollisionLineSweep(SSphere* sphere, SSphere* blockersStart, SSphere* blocke
 			if (mag <= rad * rad * 100.f)
 			{
 				surfaceNormal = CVector2(v.x * mag, v.y * mag);
-				b->mHealth -= 20;
-				sphere->mHealth -= 20;
-				return true;
+				return b;
 			}++b;
 		}
 
@@ -94,9 +95,7 @@ bool CollisionLineSweep(SSphere* sphere, SSphere* blockersStart, SSphere* blocke
 			if (mag <= rad * rad * 100)
 			{
 				surfaceNormal = CVector2(v.x * mag, v.y * mag);
-				b->mHealth -= 20;
-				sphere->mHealth -= 20;
-				return true;
+				return b;
 			}
 
 		}
@@ -109,8 +108,8 @@ bool CollisionLineSweep(SSphere* sphere, SSphere* blockersStart, SSphere* blocke
 	///
 	//////////////////////////////
 
-	auto sp = gMovingSpheres.data();
-	auto spEnd = sp + gMovingSpheres.size();
+	auto sp = gMovingSpheresCollisionInfo.data();
+	auto spEnd = sp + gMovingSpheresCollisionInfo.size();
 
 	while (sp != spEnd)
 	{
@@ -123,20 +122,16 @@ bool CollisionLineSweep(SSphere* sphere, SSphere* blockersStart, SSphere* blocke
 		if (mag <= rad * rad * 100)
 		{
 			surfaceNormal = CVector2(v.x * mag, v.y * mag);
-			sp->mHealth -= 20;
-			sphere->mHealth -= 20;
-			return true;
+			return sp;
 		}
 		++sp;
 	}
 
 
-	return false;
+	return nullptr;
 }
 
-
-
-bool Collision(SSphere* sphere, SSphere* blockersStart, SSphere* blockersEnd, CVector2& surfaceNormal)
+inline SSphereCollisionInfo* Collision(SSphereCollisionInfo* sphere,CVector2& surfaceNormal)
 {
 	//////////////////////////////
 	///
@@ -149,46 +144,50 @@ bool Collision(SSphere* sphere, SSphere* blockersStart, SSphere* blockersEnd, CV
 		sphere->mPosition.x <= KWallBoundsMin.x)
 	{
 		surfaceNormal = CVector2(1.f, 0.f);
-		return  true;
+		return  sphere;
 	}
 
 	if (sphere->mPosition.y >= KWallBoundsMax.y ||
 		sphere->mPosition.y <= KWallBoundsMin.y)
 	{
 		surfaceNormal = CVector2(0.f, 1.f);
-		return true;
+		return sphere;
 	}
 
 
 	//////////////////////////////
 	///
-	///	Collision with blockers
+	/// Collision with blockers
 	///
 	//////////////////////////////
-	
-	auto s = blockersStart;
-	auto b = s;
-	while (b != blockersEnd)
+
+	auto s = gBlockingSpheresCollisionInfo.data();
+	auto blockersEnd =  s + gBlockingSpheresCollisionInfo.size();
+
+	auto sr = sphere->mPosition.x + sphere->mRadius;
+
+	while (s != blockersEnd && sr > s->mPosition.x + s->mRadius)
 	{
-		if (b == sphere)
+		if (s == sphere)
 		{
-			++b;
-			continue;
+			++s; continue;
 		}
 
-		const auto v = b->mPosition - sphere->mPosition;
+
+		const auto v = s->mPosition - sphere->mPosition;
 		const auto mag = v.Magnitude();
-		const auto rad = b->mRadius + sphere->mRadius;
+		const auto rad = s->mRadius + sphere->mRadius;
 
 		if (mag <= rad * rad * 100.f)
 		{
 			surfaceNormal = CVector2(v.x * mag, v.y * mag);
-			b->mHealth -= 20;
-			sphere->mHealth -= 20;
-			return true;
+			return s;
 		}
-		++b;
+
+		++s;
 	}
+
+
 
 
 	//////////////////////////////
@@ -197,8 +196,8 @@ bool Collision(SSphere* sphere, SSphere* blockersStart, SSphere* blockersEnd, CV
 	///
 	//////////////////////////////
 
-	auto sp = gMovingSpheres.data();
-	auto spEnd = sp + gMovingSpheres.size();
+	auto sp = gMovingSpheresCollisionInfo.data();
+	auto spEnd = sp + gMovingSpheresCollisionInfo.size();
 
 	while (sp != spEnd)
 	{
@@ -211,14 +210,12 @@ bool Collision(SSphere* sphere, SSphere* blockersStart, SSphere* blockersEnd, CV
 		if (mag <= rad * rad * 100)
 		{
 			surfaceNormal = CVector2(v.x * mag, v.y * mag);
-			sp->mHealth -= 20;
-			sphere->mHealth -= 20;
-			return true;
+			return sp;
 		}
 		++sp;
 	}
 
 
-	return false;
+	return nullptr;
 }
 

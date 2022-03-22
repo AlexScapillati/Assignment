@@ -61,6 +61,8 @@ public:
 
     CVector2& operator%= (int s);
 
+    CVector2& operator%= (float s);
+
     float Magnitude() const;
 
 	float MagnitudeSqrt() const;
@@ -108,3 +110,7 @@ CVector2 Normalise(const CVector2& v);
 
 
 CVector2 Reflect(const CVector2& vec, const CVector2& surfaceNormal);
+
+
+inline bool IsZero(const CVector2& v);
+

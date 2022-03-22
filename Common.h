@@ -12,11 +12,12 @@
 #include <thread>
 #include <vector>
 
-#include "thread_pool.h"
 #include "Math/CVector2.h"
 #include "Math/CVector3.h"
 
 #ifdef _VISUALIZATION_ON
+
+#include "TL-Engine.h"
 
 using namespace tle;
 
@@ -32,12 +33,18 @@ struct SSphere
 #ifdef _VISUALIZATION_ON
 	IModel* mModel = nullptr;
 #endif
+	CVector3 mColour;
+	uint8_t  mHealth = 100;
+	std::string  mName;
+};
+
+
+struct SSphereCollisionInfo
+{
+	int index; // to keep track of its position in the array , negative for the blocking spheres, positive for the moving spheres
 	float mRadius;
 	CVector2 mVelocity;
 	CVector2 mPosition;
-	CVector3 mColour;
-	uint8_t  mHealth = 100;
-	char     mName[];
 };
 
 
@@ -59,11 +66,11 @@ struct WorkerThread
 struct UpdateSpheresWork
 {
 	bool     complete = true;
-	SSphere* spheres; // The work is described simply as the parameters to the BlockSprites function
+	SSphereCollisionInfo* spheres; // The work is described simply as the parameters to the BlockSprites function
 	uint32_t numSpheres;
-	SSphere* blockers;
-	uint32_t numBlockers;
 };
+
+
 
 // A pool of worker threads, each with its associated work
 // A more flexible system could generalise the type of work that worker threads can do
@@ -71,17 +78,29 @@ static const uint32_t                      MAX_WORKERS = 31;
 std::pair<WorkerThread, UpdateSpheresWork> mUpdateSpheresWorkers[MAX_WORKERS];
 uint32_t                                   mNumWorkers; // Actual number of worker threads being used in array above
 
+// DOD approach
+// Keep only the collision related information in a separate vector
 
 vector<SSphere> gMovingSpheres;
-std::vector<SSphere> gBlockingSpheres;
+vector<SSphere> gBlockingSpheres;
 
-thread_pool TPool;
+vector<SSphereCollisionInfo> gMovingSpheresCollisionInfo;
+vector<SSphereCollisionInfo> gBlockingSpheresCollisionInfo;
 
+
+struct CollisionInfoData
+{
+	int time;
+	std::string name[2];
+	uint8_t healthRemaining[2];
+};
+
+std::vector<CollisionInfoData> gCollisionInfoData;
 
 bool bUsingMultithreading = true;
 
-constexpr uint32_t KNumOfSpheres = 2000;
-constexpr float KRangeSpawn = 2000.f;
+constexpr uint32_t KNumOfSpheres = 10000;
+constexpr float KRangeSpawn = 5000.f;
 constexpr float KRangeVelocity = 50.f;
 constexpr float KRangeRadius = 2.f;
 

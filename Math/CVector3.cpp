@@ -70,6 +70,11 @@ float CVector3::operator[](const int index) const
 	return NULL;
 }
 
+CVector3& CVector3::Rand()
+{
+	return CVector3(Random(-1.0f, 1.0f), Random(-1.0f, 1.0f), Random(-1.0f,1.0f));
+}
+
 // Vector-vector addition
 CVector3 operator+ (const CVector3& v, const CVector3& w)
 {

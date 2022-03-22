@@ -73,6 +73,8 @@ public:
 	CVector3& operator*= (float s);
 
 	float operator[](int index) const;
+
+	static CVector3& Rand();
 	
 };
 
