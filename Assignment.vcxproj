@@ -138,7 +138,7 @@ copy "C:\ProgramData\TL-Engine\3rd Party\TL-Xtreme\shader\*.*" "$(OutDir)" &gt; 
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CollisionLineSweep.h" />
+    <ClInclude Include="Collision.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="Math\CMatrix4x4.h" />
     <ClInclude Include="Math\CVector2.h" />

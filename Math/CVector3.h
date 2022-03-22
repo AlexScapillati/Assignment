@@ -67,6 +67,7 @@ public:
 	// Plus sign in front of vector - called unary positive and usually does nothing. Included for completeness (e.g. Velocity = +Velocity)
 	CVector3& operator+ ();
 
+	CVector3& operator%=(float s);
 	CVector3& operator/=(float v);
 
 	// Multiply vector by scalar (scales vector);
@@ -75,7 +76,9 @@ public:
 	float operator[](int index) const;
 
 	static CVector3& Rand();
-	
+
+
+	float Magnitude() const;
 };
 
 /*-----------------------------------------------------------------------------------------

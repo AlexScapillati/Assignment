@@ -1,20 +1,19 @@
 // Assignment.cpp: A program using the TL-Engine
 
+#include "Collision.h"
 
-#include "CollisionLineSweep.h"
 
 
 bool SceneSetup()
 {
 
-	gCollisionInfoData.erase(gCollisionInfoData.begin(),gCollisionInfoData.end());
+	gCollisionInfoData.erase(gCollisionInfoData.begin(), gCollisionInfoData.end());
 	gMovingSpheres.erase(gMovingSpheres.begin(), gMovingSpheres.end());
 	gBlockingSpheres.erase(gBlockingSpheres.begin(), gBlockingSpheres.end());
 
 	gCollisionInfoData.reserve(KNumOfSpheres * 2);
 	gMovingSpheres.reserve(KNumOfSpheres / 2);
 	gBlockingSpheres.reserve(KNumOfSpheres / 2);
-
 
 	gMovingSpheresCollisionInfo.erase(gMovingSpheresCollisionInfo.begin(), gMovingSpheresCollisionInfo.end());
 	gBlockingSpheresCollisionInfo.erase(gBlockingSpheresCollisionInfo.begin(), gBlockingSpheresCollisionInfo.end());
@@ -40,7 +39,20 @@ bool SceneSetup()
 
 		if (i >= KNumOfSpheres / 2)
 		{
+
+#ifdef _3D
+			s.mVelocity = CVector3::Rand() * KRangeVelocity;
+			s.mPosition = CVector3::Rand() * (KRangeSpawn - s.mRadius);
+			s.mPosition += CVector3::Rand();
+			s.mPosition %= KRangeSpawn;
+#else
 			s.mVelocity = CVector2::Rand() * KRangeVelocity;
+			s.mPosition = CVector2::Rand() * (KRangeSpawn - s.mRadius);
+			s.mPosition += CVector2::Rand();
+			s.mPosition %= KRangeSpawn;
+#endif
+
+
 
 #ifdef _VISUALIZATION_ON
 			ss.mModel = sphereMesh->CreateModel();
@@ -51,12 +63,23 @@ bool SceneSetup()
 		}
 		else
 		{
-			s.mVelocity = CVector2(0.f, 0.f);
+
+#ifdef _3D
+			s.mVelocity = CVector3::Rand() * KRangeVelocity;
+			s.mPosition = CVector3::Rand() * (KRangeSpawn - s.mRadius);
+			s.mPosition += CVector3::Rand();
+			s.mPosition %= KRangeSpawn;
+#else
+			s.mVelocity = CVector2::Rand() * KRangeVelocity;
+			s.mPosition = CVector2::Rand() * (KRangeSpawn - s.mRadius);
+			s.mPosition += CVector2::Rand();
+			s.mPosition %= KRangeSpawn;
+#endif
+
 
 #ifdef _VISUALIZATION_ON
 			ss.mModel = blockedMesh->CreateModel();
 			ss.mModel->Scale(s.mRadius);
-			ss.mModel->SetPosition(s.mPosition.x, s.mPosition.y, 0.0f);
 #endif
 
 			gBlockingSpheres.push_back(ss);
@@ -64,39 +87,50 @@ bool SceneSetup()
 		}
 	}
 
+	std::sort(gBlockingSpheresCollisionInfo.begin(), gBlockingSpheresCollisionInfo.end(), [](const SSphereCollisionInfo& a, const SSphereCollisionInfo& b) { return a.mPosition.x < b.mPosition.x; });
 
-	CVector2 null;
+	// Get all the spheres pointers and arrange them into the grid
 
-	
 	for (auto i = 0; i < KNumOfSpheres / 2; ++i)
 	{
-
-		auto& s = gBlockingSpheresCollisionInfo[i];
-
-			s.mPosition = CVector2::Rand() * KRangeSpawn;
-			s.mPosition += CVector2::Rand();
-			s.mPosition %= KRangeSpawn;
-			s.index = -i;
+		auto s = &gBlockingSpheresCollisionInfo[i];
+			s->index = -i;
+		gGrid.Add(s);
 	}
 
-	for (auto i = 0u; i < KNumOfSpheres / 2u; ++i)
+	for (auto i = 0; i < KNumOfSpheres / 2; ++i)
 	{
-
-		auto& s = gMovingSpheresCollisionInfo[i];
-		
-			s.mPosition = CVector2::Rand() * KRangeSpawn;
-			s.mPosition += CVector2::Rand();
-			s.mPosition %= KRangeSpawn;
-			s.index = i;
+		auto s = &gMovingSpheresCollisionInfo[i];
+		s->index = i;
+		gGrid.Add(s);
 	}
-
-	std::sort(gBlockingSpheresCollisionInfo.begin(), gBlockingSpheresCollisionInfo.end(), [](const SSphereCollisionInfo& a, const SSphereCollisionInfo& b) { return a.mPosition.x < b.mPosition.x; });
 
 	return true;
 }
 
 
-void log(SSphere* first, SSphere* second)
+std::mutex m;
+void UpdateSpheresInGrid(SSphereCollisionInfo* s)
+{
+	auto p = gGrid.GetPartition(s->mPosition);
+	auto p2 = s->mPartition;
+	if (p != p2)
+	{
+		std::unique_lock<std::mutex> l(m, std::try_to_lock);
+
+		while (!l.owns_lock()) {}
+
+		auto oldPart = s->mPartition;
+		std::swap(s, s->mPartition->back());
+		s->mPartition->pop_back();
+		gGrid.Add(s);
+
+	}
+}
+
+
+
+void Log(SSphere* first, SSphere* second)
 {
 	CollisionInfoData c;
 	c.healthRemaining[0] = first->mHealth;
@@ -118,7 +152,7 @@ void PrintLog()
 	for (const auto& i : gCollisionInfoData)
 	{
 		auto s = "[" + std::to_string(i.time) + "] Collision: " + i.name[0] + ", Health : " + std::to_string(i.healthRemaining[0]);
-		s.append(" with "+ i.name[1] + ", Health : " + std::to_string(i.healthRemaining[1]));
+		s.append(" with " + i.name[1] + ", Health : " + std::to_string(i.healthRemaining[1]));
 
 		file << s << endl;
 	}
@@ -128,35 +162,41 @@ void PrintLog()
 	file.close();
 }
 
-
 void Work(SSphereCollisionInfo* start, SSphereCollisionInfo* end)
 {
 	auto sphere = start;
 	while (sphere != end)
 	{
+#ifdef _3D
+		CVector3 surfaceNormal;
+#else
 		CVector2 surfaceNormal;
+#endif
 
-		auto c = CollisionLineSweep(sphere, surfaceNormal);
+		auto c = CollisionSpatialPartitioning(sphere, surfaceNormal);
 
-		if (c)
+		if (c && c!= sphere)
 		{
-			sphere->mPosition -= sphere->mVelocity * totalTime ;
+			sphere->mPosition -= sphere->mVelocity * totalTime;
 			sphere->mVelocity = Reflect(sphere->mVelocity, surfaceNormal);
 
-#ifdef _LOG
 			auto j = c->index;
 			auto i = sphere->index;
 
-			if(j < 0) 
-				log(&gMovingSpheres[i], &gBlockingSpheres[std::abs(j)]);
-			else
-				log(&gMovingSpheres[i], &gMovingSpheres[std::abs(j)]);
+
+			if (j < 0) gBlockingSpheres[std::abs(j)].mHealth -= 20;
+			else gMovingSpheres[std::abs(j)].mHealth -= 20;
+
+#ifdef _LOG
+			Log(&gMovingSpheres[i], &(j < 0 ? gBlockingSpheres : gMovingSpheres)[std::abs(j)]);
 #endif
 
 		}
 		else
 			sphere->mPosition += sphere->mVelocity * totalTime;
-		
+
+		//UpdateSpheresInGrid(sphere);
+
 		++sphere;
 	}
 
@@ -168,6 +208,7 @@ void Work(SSphereCollisionInfo* start, SSphereCollisionInfo* end)
 
 void UpdateThread(uint32_t thread)
 {
+
 	auto& worker = mUpdateSpheresWorkers[thread].first;
 	auto& work = mUpdateSpheresWorkers[thread].second;
 	while (true)
@@ -178,7 +219,7 @@ void UpdateThread(uint32_t thread)
 		}
 
 		// We have some work so do it...
-		Work(work.spheres, work.spheres + work.numSpheres);
+		Work(work.start, work.end);
 
 		{
 			// Flag the work is complete
@@ -191,11 +232,12 @@ void UpdateThread(uint32_t thread)
 	}
 }
 
+
 void UpdateSpheres()
 {
 	if (bUsingMultithreading)
 	{
-		const auto nThreads = std::thread::hardware_concurrency() -1 ;
+		const auto nThreads = std::thread::hardware_concurrency();
 		const auto numSpheres = gMovingSpheresCollisionInfo.size();
 		const auto spheresPerSection = numSpheres / (nThreads + 1);
 
@@ -204,8 +246,8 @@ void UpdateSpheres()
 		for (uint32_t i = 0; i < nThreads; ++i)
 		{
 			auto& work = mUpdateSpheresWorkers[i].second;
-			work.numSpheres = spheresPerSection;
-			work.spheres = spheres;
+			work.start = spheres;
+			work.end = spheres + spheresPerSection;
 
 			// Flag the work as not yet complete
 			auto& workerThread = mUpdateSpheresWorkers[i].first;
@@ -238,9 +280,10 @@ void UpdateSpheres()
 	}
 	else
 	{
-		Work(&gMovingSpheresCollisionInfo[0], &gMovingSpheresCollisionInfo[gMovingSpheresCollisionInfo.size() - 1]);
+		Work(gMovingSpheresCollisionInfo.data(), gMovingSpheresCollisionInfo.data() + gMovingSpheresCollisionInfo.size());
 	}
 }
+
 
 
 bool GameLoop()
@@ -252,22 +295,32 @@ bool GameLoop()
 
 	workTime = myEngine->Timer();
 
+#ifdef _3D
 	for (int i = 0u; i < KNumOfSpheres / 2; ++i)
 	{
-		gBlockingSpheres[i].mModel->SetPosition(gBlockingSpheresCollisionInfo[i].mPosition.x,gBlockingSpheresCollisionInfo[i].mPosition.y,0.0f);
+		gBlockingSpheres[i].mModel->SetPosition(gBlockingSpheresCollisionInfo[i].mPosition.x, gBlockingSpheresCollisionInfo[i].mPosition.y, gBlockingSpheresCollisionInfo[i].mPosition.z);
 	}
-
-
+	for (int i = 0u; i < KNumOfSpheres / 2; ++i)
+	{
+		gMovingSpheres[i].mModel->SetPosition(gMovingSpheresCollisionInfo[i].mPosition.x, gMovingSpheresCollisionInfo[i].mPosition.y,gMovingSpheresCollisionInfo[i].mPosition.z);
+	}
+#else
+	for (int i = 0u; i < KNumOfSpheres / 2; ++i)
+	{
+		gBlockingSpheres[i].mModel->SetPosition(gBlockingSpheresCollisionInfo[i].mPosition.x, gBlockingSpheresCollisionInfo[i].mPosition.y, 0.0f);
+	}
 	for (int i = 0u; i < KNumOfSpheres / 2; ++i)
 	{
 		gMovingSpheres[i].mModel->SetPosition(gMovingSpheresCollisionInfo[i].mPosition.x, gMovingSpheresCollisionInfo[i].mPosition.y, 0.0f);
 	}
+#endif
+
 
 	myCamera->MoveZ(myEngine->GetMouseWheelMovement() * 100);
-	myCamera->MoveLocalY(myEngine->KeyHeld(Key_W) * 1000.0f* totalTime);
-	myCamera->MoveLocalY(myEngine->KeyHeld(Key_S) * -1000.f* totalTime);
-	myCamera->MoveLocalX(myEngine->KeyHeld(Key_D) * 1000.0f* totalTime);
-	myCamera->MoveLocalX(myEngine->KeyHeld(Key_A) * -1000.f* totalTime);
+	myCamera->MoveLocalY(myEngine->KeyHeld(Key_W) * 1000.0f * totalTime);
+	myCamera->MoveLocalY(myEngine->KeyHeld(Key_S) * -1000.f * totalTime);
+	myCamera->MoveLocalX(myEngine->KeyHeld(Key_D) * 1000.0f * totalTime);
+	myCamera->MoveLocalX(myEngine->KeyHeld(Key_A) * -1000.f * totalTime);
 	if (myEngine->KeyHit(Key_Escape)) return false;
 	if (myEngine->KeyHit(Key_Space)) bUsingMultithreading = !bUsingMultithreading;
 
@@ -297,6 +350,7 @@ void main()
 		mUpdateSpheresWorkers[i].first.thread = std::thread(&UpdateThread, i);
 	}
 
+
 #ifdef _VISUALIZATION_ON
 
 	// Create a 3D engine (using TLX engine here) and open a window for it
@@ -306,12 +360,17 @@ void main()
 	// Add default folder for meshes and other media
 	myEngine->AddMediaFolder("C:\\ProgramData\\TL-Engine\\Media");
 	const auto font = myEngine->DefaultFont();
+
+
+	SceneSetup();
+
 #else
+
+	SceneSetup();
+
 	while (true)
 	{
 #endif
-		SceneSetup();
-
 
 #ifdef _VISUALIZATION_ON
 		// The main game loop, repeat until engine is stopped
@@ -328,6 +387,7 @@ void main()
 #ifdef _VISUALIZATION_ON
 
 			frameTime = myEngine->Timer();
+			font->Draw(" Number Spheres " + std::to_string(KNumOfSpheres), 10, 0);
 			font->Draw("ms: " + std::to_string(totalTime), 10, 10);
 			font->Draw("FPS: " + std::to_string(1.0f / totalTime), 10, 20);
 			font->Draw("Work time: " + std::to_string(workTime), 10, 30);
@@ -342,6 +402,7 @@ void main()
 			/**** Update your scene each frame here ****/
 
 			if (!GameLoop()) break;
+
 #ifdef _LOG
 			PrintLog();
 #endif
@@ -363,10 +424,10 @@ void main()
 		myEngine->Delete();
 #else
 		auto end = chrono::steady_clock::now();
-		cout << "Time took = " << chrono::duration_cast<chrono::milliseconds>(end - begin).count() << "[ms]" << endl;
+		std::cout << "Time took = " << chrono::duration_cast<chrono::milliseconds>(end - begin).count() << "[ms]" << endl;
 
 
-		}
+	}
 #endif
 	for (uint32_t i = 0; i < mNumWorkers; ++i)
 	{
@@ -374,4 +435,4 @@ void main()
 		mUpdateSpheresWorkers[i].first.thread.detach();
 	}
 
-	}
+}

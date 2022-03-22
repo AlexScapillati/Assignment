@@ -75,6 +75,11 @@ CVector3& CVector3::Rand()
 	return CVector3(Random(-1.0f, 1.0f), Random(-1.0f, 1.0f), Random(-1.0f,1.0f));
 }
 
+float CVector3::Magnitude() const
+{
+	return x * x + y * y + z * z;
+}
+
 // Vector-vector addition
 CVector3 operator+ (const CVector3& v, const CVector3& w)
 {
@@ -131,6 +136,25 @@ CVector3 operator/(float s, const CVector3& v)
 CVector3 operator*(const CVector3& v, const CVector3& w)
 {
 	return CVector3(v.x*w.x,v.y*w.y,v.z*w.z);
+}
+
+
+CVector3& CVector3::operator%=(float s)
+{
+	int x1 = x;
+	int y1 = y;
+	int z1 = z;
+	float x2 = x - x1;
+	float y2 = y - y1;
+	float z2 = z - z1;
+	x1 %= (int)s;
+	y1 %= (int)s;
+	z1 %= (int)s;
+	x = (float)x1 + x2;
+	y = (float)y1 + y2;
+	z = (float)z1 + z2;
+
+	return *this;
 }
 
 // Addition of another vector to this one, e.g. Position += Velocity

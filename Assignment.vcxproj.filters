@@ -39,7 +39,7 @@
     <ClInclude Include="Math\MathHelpers.h">
       <Filter>Math</Filter>
     </ClInclude>
-    <ClInclude Include="CollisionLineSweep.h" />
+    <ClInclude Include="Collision.h" />
     <ClInclude Include="Common.h" />
   </ItemGroup>
 </Project>

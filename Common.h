@@ -6,9 +6,6 @@
 #include <unistd.h>
 #endif
 
-//#define _VISUALIZATION_ON
-#define _LOG
-
 using namespace std;
 
 #include <condition_variable>
@@ -24,6 +21,21 @@ using namespace std;
 #include <iostream>
 #include <string>
 
+//---------------------------------------------------------------
+// Settings
+//---------------------------------------------------------------
+
+
+#define _VISUALIZATION_ON
+//#define _LOG
+//#define _3D
+
+
+//---------------------------------------------------------------
+// End Settings
+//---------------------------------------------------------------
+
+
 #ifdef _VISUALIZATION_ON
 
 #include "TL-Engine.h"
@@ -35,25 +47,31 @@ ICamera* myCamera;
 
 #endif
 
-
 struct SSphere
 {
 
 #ifdef _VISUALIZATION_ON
 	IModel* mModel = nullptr;
 #endif
+
 	CVector3 mColour;
 	uint8_t  mHealth = 100;
 	std::string  mName;
 };
 
-
 struct SSphereCollisionInfo
 {
-	int index; // to keep track of its position in the array , negative for the blocking spheres, positive for the moving spheres
-	float mRadius;
+#ifdef _3D
+	CVector3 mVelocity;
+	CVector3 mPosition;
+#else
 	CVector2 mVelocity;
 	CVector2 mPosition;
+#endif
+
+	int index; // to keep track of its position in the array , negative for the blocking spheres, positive for the moving spheres
+	std::vector<SSphereCollisionInfo*>* mPartition; // to keep track of the partition this sphere is in
+	float mRadius;
 };
 
 
@@ -75,8 +93,8 @@ struct WorkerThread
 struct UpdateSpheresWork
 {
 	bool     complete = true;
-	SSphereCollisionInfo* spheres; // The work is described simply as the parameters to the BlockSprites function
-	uint32_t numSpheres;
+	SSphereCollisionInfo* start; // The work is described simply as the parameters to the BlockSprites function
+	SSphereCollisionInfo* end;
 };
 
 
@@ -97,7 +115,6 @@ vector<SSphereCollisionInfo> gMovingSpheresCollisionInfo;
 vector<SSphereCollisionInfo> gBlockingSpheresCollisionInfo;
 
 
-
 struct CollisionInfoData
 {
 	int time;
@@ -109,13 +126,21 @@ std::vector<CollisionInfoData> gCollisionInfoData;
 
 bool bUsingMultithreading = true;
 
-constexpr uint32_t KNumOfSpheres = 1000000;
-constexpr float KRangeSpawn = 500.f;
+constexpr uint32_t KNumOfSpheresSQRD = 1000;
+constexpr uint32_t KNumOfSpheres = KNumOfSpheresSQRD * KNumOfSpheresSQRD;
+constexpr float KRangeSpawn = 5000.f;
+constexpr uint32_t KNumPartitions = 40;
+constexpr int kPartitionSize = (int)KRangeSpawn / KNumPartitions * 2;
 constexpr float KRangeVelocity = 50.f;
 constexpr float KRangeRadius = 2.f;
 
+#ifdef _3D
+CVector3 KWallBoundsMax = CVector3(KRangeSpawn, KRangeSpawn,KRangeSpawn);
+CVector3 KWallBoundsMin = -KWallBoundsMax;
+#else
 CVector2 KWallBoundsMax = CVector2(KRangeSpawn, KRangeSpawn);
 CVector2 KWallBoundsMin = -KWallBoundsMax;
+#endif
 
 
 float frameTime;
