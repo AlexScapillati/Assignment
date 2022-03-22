@@ -1,17 +1,8 @@
 // Assignment.cpp: A program using the TL-Engine
 
-#include <algorithm>
-#include <fstream>
-#include <iostream>
-#include <TL-Engine.h>	// TL-Engine include file and namespace
 
 #include "CollisionLineSweep.h"
 
-#include "SpatialPartitioning.h"
-#include "Math/CVector2.h"
-#include "Math/MathHelpers.h"
-
-Grid gGrid(kNumCells, kCellSize);
 
 bool SceneSetup()
 {
@@ -70,7 +61,6 @@ bool SceneSetup()
 
 			gBlockingSpheres.push_back(ss);
 			gBlockingSpheresCollisionInfo.push_back(s);
-			gGrid.AddSphere(&s);
 		}
 	}
 
@@ -78,7 +68,7 @@ bool SceneSetup()
 	CVector2 null;
 
 	
-	for (auto i = 0u; i < KNumOfSpheres / 2; ++i)
+	for (auto i = 0; i < KNumOfSpheres / 2; ++i)
 	{
 
 		auto& s = gBlockingSpheresCollisionInfo[i];
@@ -89,7 +79,7 @@ bool SceneSetup()
 			s.index = -i;
 	}
 
-	for (auto i = 0u; i < KNumOfSpheres / 2; ++i)
+	for (auto i = 0u; i < KNumOfSpheres / 2u; ++i)
 	{
 
 		auto& s = gMovingSpheresCollisionInfo[i];
@@ -97,14 +87,10 @@ bool SceneSetup()
 			s.mPosition = CVector2::Rand() * KRangeSpawn;
 			s.mPosition += CVector2::Rand();
 			s.mPosition %= KRangeSpawn;
-			s.index = 1;
+			s.index = i;
 	}
 
 	std::sort(gBlockingSpheresCollisionInfo.begin(), gBlockingSpheresCollisionInfo.end(), [](const SSphereCollisionInfo& a, const SSphereCollisionInfo& b) { return a.mPosition.x < b.mPosition.x; });
-
-
-
-
 
 	return true;
 }
@@ -119,19 +105,20 @@ void log(SSphere* first, SSphere* second)
 	c.name[1] = second->mName;
 	c.time = time(0);
 
-	gCollisionInfoData.push_back(c);
+	gCollisionInfoData.emplace_back(c);
 }
 
 void PrintLog()
 {
+
 	ofstream file;
 
 	file.open("Output.txt");
 
 	for (const auto& i : gCollisionInfoData)
 	{
-		std::string s = "[" + std::to_string(i.time) + "] Collision: " + i.name[0] + ", Health : " + std::to_string(i.healthRemaining[0]) + " with "
-			+ i.name[1] + ", Health : " + std::to_string(i.healthRemaining[1]) ;
+		auto s = "[" + std::to_string(i.time) + "] Collision: " + i.name[0] + ", Health : " + std::to_string(i.healthRemaining[0]);
+		s.append(" with "+ i.name[1] + ", Health : " + std::to_string(i.healthRemaining[1]));
 
 		file << s << endl;
 	}
@@ -156,6 +143,7 @@ void Work(SSphereCollisionInfo* start, SSphereCollisionInfo* end)
 			sphere->mPosition -= sphere->mVelocity * totalTime ;
 			sphere->mVelocity = Reflect(sphere->mVelocity, surfaceNormal);
 
+#ifdef _LOG
 			auto j = c->index;
 			auto i = sphere->index;
 
@@ -163,6 +151,8 @@ void Work(SSphereCollisionInfo* start, SSphereCollisionInfo* end)
 				log(&gMovingSpheres[i], &gBlockingSpheres[std::abs(j)]);
 			else
 				log(&gMovingSpheres[i], &gMovingSpheres[std::abs(j)]);
+#endif
+
 		}
 		else
 			sphere->mPosition += sphere->mVelocity * totalTime;
@@ -205,7 +195,7 @@ void UpdateSpheres()
 {
 	if (bUsingMultithreading)
 	{
-		const auto nThreads = std::thread::hardware_concurrency();
+		const auto nThreads = std::thread::hardware_concurrency() -1 ;
 		const auto numSpheres = gMovingSpheresCollisionInfo.size();
 		const auto spheresPerSection = numSpheres / (nThreads + 1);
 
@@ -352,8 +342,10 @@ void main()
 			/**** Update your scene each frame here ****/
 
 			if (!GameLoop()) break;
-
+#ifdef _LOG
 			PrintLog();
+#endif
+
 
 			if (totalTime < 0) totalTime = frameTime + renderingTime + workTime;
 

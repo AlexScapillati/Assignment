@@ -6,7 +6,10 @@
 #include <unistd.h>
 #endif
 
-#define _VISUALIZATION_ON
+//#define _VISUALIZATION_ON
+#define _LOG
+
+using namespace std;
 
 #include <condition_variable>
 #include <thread>
@@ -14,6 +17,12 @@
 
 #include "Math/CVector2.h"
 #include "Math/CVector3.h"
+#include "Math/MathHelpers.h"
+
+#include <algorithm>
+#include <fstream>
+#include <iostream>
+#include <string>
 
 #ifdef _VISUALIZATION_ON
 
@@ -100,12 +109,10 @@ std::vector<CollisionInfoData> gCollisionInfoData;
 
 bool bUsingMultithreading = true;
 
-constexpr uint32_t KNumOfSpheres = 10000;
-constexpr float KRangeSpawn = 5000.f;
+constexpr uint32_t KNumOfSpheres = 1000000;
+constexpr float KRangeSpawn = 500.f;
 constexpr float KRangeVelocity = 50.f;
 constexpr float KRangeRadius = 2.f;
-constexpr uint32_t kNumCells = 1000;
-constexpr float kCellSize =  (KRangeSpawn * 2.f) / kNumCells;
 
 CVector2 KWallBoundsMax = CVector2(KRangeSpawn, KRangeSpawn);
 CVector2 KWallBoundsMin = -KWallBoundsMax;
