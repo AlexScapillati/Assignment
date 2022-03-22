@@ -3,7 +3,7 @@
 #include "Common.h"
 
 
-SSphereCollisionInfo* CollisionLineSweep(SSphereCollisionInfo* sphere, CVector2& surfaceNormal)
+inline SSphereCollisionInfo* CollisionLineSweep(SSphereCollisionInfo* sphere, CVector2& surfaceNormal)
 {
 	//////////////////////////////
 	///
@@ -50,7 +50,7 @@ SSphereCollisionInfo* CollisionLineSweep(SSphereCollisionInfo* sphere, CVector2&
 
 	do
 	{
-		m = s + (e - s) / 2;
+		m = s + (int)((e - s) * .5);
 		if (sr <= m->mPosition.x) e = m;
 		else if (sr <= m->mPosition.x) s = m;
 		else						   found = true;
@@ -218,4 +218,45 @@ inline SSphereCollisionInfo* Collision(SSphereCollisionInfo* sphere,CVector2& su
 
 	return nullptr;
 }
+
+
+struct Cell
+{
+	std::vector<SSphereCollisionInfo*> mSpheres;
+};
+
+
+class Grid
+{
+
+	public:
+
+		Grid(int numCells, float cellSize) : mSize(numCells), mCellSize(cellSize)
+		{
+			mGrid.reserve(numCells * numCells);
+		}
+
+		void AddSphere(SSphereCollisionInfo* s)
+		{
+			GetCell(s->mPosition).mSpheres.push_back(s);
+		}
+
+
+		Cell& GetCell(CVector2& pos)
+		{
+			auto x = int(pos.x / mCellSize);
+			auto y = int(pos.y / mCellSize);
+
+
+			return mGrid[abs(pos.y) * mSize + abs(pos.x)];
+		}
+
+	std::vector<Cell> mGrid;
+
+	int mSize;
+	float mCellSize;
+
+	
+
+};
 

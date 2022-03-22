@@ -6,11 +6,12 @@
 #include <TL-Engine.h>	// TL-Engine include file and namespace
 
 #include "CollisionLineSweep.h"
-#include "Common.h"
 
+#include "SpatialPartitioning.h"
 #include "Math/CVector2.h"
 #include "Math/MathHelpers.h"
 
+Grid gGrid(kNumCells, kCellSize);
 
 bool SceneSetup()
 {
@@ -69,6 +70,7 @@ bool SceneSetup()
 
 			gBlockingSpheres.push_back(ss);
 			gBlockingSpheresCollisionInfo.push_back(s);
+			gGrid.AddSphere(&s);
 		}
 	}
 
@@ -99,6 +101,10 @@ bool SceneSetup()
 	}
 
 	std::sort(gBlockingSpheresCollisionInfo.begin(), gBlockingSpheresCollisionInfo.end(), [](const SSphereCollisionInfo& a, const SSphereCollisionInfo& b) { return a.mPosition.x < b.mPosition.x; });
+
+
+
+
 
 	return true;
 }
@@ -139,8 +145,6 @@ void PrintLog()
 void Work(SSphereCollisionInfo* start, SSphereCollisionInfo* end)
 {
 	auto sphere = start;
-	
-
 	while (sphere != end)
 	{
 		CVector2 surfaceNormal;

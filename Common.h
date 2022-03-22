@@ -88,6 +88,7 @@ vector<SSphereCollisionInfo> gMovingSpheresCollisionInfo;
 vector<SSphereCollisionInfo> gBlockingSpheresCollisionInfo;
 
 
+
 struct CollisionInfoData
 {
 	int time;
@@ -103,6 +104,8 @@ constexpr uint32_t KNumOfSpheres = 10000;
 constexpr float KRangeSpawn = 5000.f;
 constexpr float KRangeVelocity = 50.f;
 constexpr float KRangeRadius = 2.f;
+constexpr uint32_t kNumCells = 1000;
+constexpr float kCellSize =  (KRangeSpawn * 2.f) / kNumCells;
 
 CVector2 KWallBoundsMax = CVector2(KRangeSpawn, KRangeSpawn);
 CVector2 KWallBoundsMin = -KWallBoundsMax;
