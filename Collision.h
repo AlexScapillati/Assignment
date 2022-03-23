@@ -41,14 +41,14 @@ struct Grid
 
 		auto n = KNumPartitions - 1;
 
-		if (x > 0 && y > 0) neighbours[0] = &mPartitions[y - 1][x - 1]; else neighbours[0] = nullptr;
-		if (y > 0)			neighbours[1] = &mPartitions[y - 1][x    ];	else neighbours[1] = nullptr;
-		if (x < n && y > 0) neighbours[2] = &mPartitions[y - 1][x + 1];	else neighbours[2] = nullptr;
-		if (x > 0)			neighbours[3] = &mPartitions[y    ][x - 1];	else neighbours[3] = nullptr;
-		if (x < n && y < n)	neighbours[4] = &mPartitions[y + 1][x + 1];	else neighbours[4] = nullptr;
-		if (y < n)			neighbours[5] = &mPartitions[y + 1][x    ];	else neighbours[5] = nullptr;
-		if (y < n && x > 0)	neighbours[6] = &mPartitions[y + 1][x - 1];	else neighbours[6] = nullptr;
-		if (x > 0)			neighbours[7] = &mPartitions[y    ][x - 1];	else neighbours[7] = nullptr;
+		if (x > 0 && y > 0) neighbours[0] = &mPartitions[y - 1	* KNumPartitions + x - 1];	else neighbours[0] = nullptr;
+		if (y > 0)			neighbours[1] = &mPartitions[y - 1	* KNumPartitions + x    ];	else neighbours[1] = nullptr;
+		if (x < n && y > 0) neighbours[2] = &mPartitions[y - 1	* KNumPartitions + x + 1];	else neighbours[2] = nullptr;
+		if (x > 0)			neighbours[3] = &mPartitions[y		* KNumPartitions + x - 1];	else neighbours[3] = nullptr;
+		if (x < n && y < n)	neighbours[4] = &mPartitions[y + 1	* KNumPartitions + x + 1];	else neighbours[4] = nullptr;
+		if (y < n)			neighbours[5] = &mPartitions[y + 1	* KNumPartitions + x    ];	else neighbours[5] = nullptr;
+		if (y < n && x > 0)	neighbours[6] = &mPartitions[y + 1	* KNumPartitions + x - 1];	else neighbours[6] = nullptr;
+		if (x > 0)			neighbours[7] = &mPartitions[y		* KNumPartitions + x - 1];	else neighbours[7] = nullptr;
 		
 	}
 
@@ -57,18 +57,20 @@ struct Grid
 		const auto x = static_cast<int>((s->mPosition.x + KRangeSpawn) / kPartitionSize);
 		const auto y = static_cast<int>((s->mPosition.y + KRangeSpawn) / kPartitionSize);
 
-		mPartitions[y][x].push_back(s);
-		s->mPartition = &mPartitions[y][x];
+		mPartitions[y * KNumPartitions + x].push_back(s);
+		s->indexInPartition = mPartitions[y * KNumPartitions + x].size() - 1;
+		s->mPartition = &mPartitions[y * KNumPartitions + x];
 	}
+
 	auto* GetPartition(CVector2& pos)
 	{
 		const auto x = static_cast<int>((pos.x + KRangeSpawn) / kPartitionSize);
 		const auto y = static_cast<int>((pos.y + KRangeSpawn) / kPartitionSize);
 
-		return &mPartitions[x][y];
+		return &mPartitions[y * KNumPartitions + x];
 	}
 
-	std::vector<SSphereCollisionInfo*> mPartitions[KNumPartitions][KNumPartitions];
+	std::vector<SSphereCollisionInfo*> mPartitions[KNumPartitions*KNumPartitions];
 
 #endif
 
@@ -137,7 +139,7 @@ SSphereCollisionInfo* CollisionSpatialPartitioning(SSphereCollisionInfo* sphere,
 		// if no collision inside the same partition, we need to check also the neighbours partitions
 
 		std::vector<SSphereCollisionInfo*>* neighbours[8]{nullptr};
-	   // gGrid.GetNeighboursPartitions(sphere->mPosition,neighbours);
+	   //gGrid.GetNeighboursPartitions(sphere->mPosition,neighbours);
 
 	for (int i = 0; i < 8; ++i)
 	{

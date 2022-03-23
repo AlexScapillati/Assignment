@@ -26,7 +26,7 @@ using namespace std;
 //---------------------------------------------------------------
 
 
-#define _VISUALIZATION_ON
+//#define _VISUALIZATION_ON
 //#define _LOG
 //#define _3D
 
@@ -69,6 +69,7 @@ struct SSphereCollisionInfo
 	CVector2 mPosition;
 #endif
 
+	int indexInPartition;
 	int index; // to keep track of its position in the array , negative for the blocking spheres, positive for the moving spheres
 	std::vector<SSphereCollisionInfo*>* mPartition; // to keep track of the partition this sphere is in
 	float mRadius;
@@ -105,15 +106,6 @@ static const uint32_t                      MAX_WORKERS = 31;
 std::pair<WorkerThread, UpdateSpheresWork> mUpdateSpheresWorkers[MAX_WORKERS];
 uint32_t                                   mNumWorkers; // Actual number of worker threads being used in array above
 
-// DOD approach
-// Keep only the collision related information in a separate vector
-
-vector<SSphere> gMovingSpheres;
-vector<SSphere> gBlockingSpheres;
-
-vector<SSphereCollisionInfo> gMovingSpheresCollisionInfo;
-vector<SSphereCollisionInfo> gBlockingSpheresCollisionInfo;
-
 
 struct CollisionInfoData
 {
@@ -128,8 +120,8 @@ bool bUsingMultithreading = true;
 
 constexpr uint32_t KNumOfSpheresSQRD = 1000;
 constexpr uint32_t KNumOfSpheres = KNumOfSpheresSQRD * KNumOfSpheresSQRD;
-constexpr float KRangeSpawn = 5000.f;
-constexpr uint32_t KNumPartitions = 40;
+constexpr float KRangeSpawn = 500000.f;
+constexpr uint32_t KNumPartitions = 100;
 constexpr int kPartitionSize = (int)KRangeSpawn / KNumPartitions * 2;
 constexpr float KRangeVelocity = 50.f;
 constexpr float KRangeRadius = 2.f;
@@ -141,6 +133,15 @@ CVector3 KWallBoundsMin = -KWallBoundsMax;
 CVector2 KWallBoundsMax = CVector2(KRangeSpawn, KRangeSpawn);
 CVector2 KWallBoundsMin = -KWallBoundsMax;
 #endif
+
+// DOD approach
+// Keep only the collision related information in a separate vector
+
+SSphere gMovingSpheres[KNumOfSpheres /2];
+SSphere gBlockingSpheres[KNumOfSpheres/2];
+
+vector<SSphereCollisionInfo> gMovingSpheresCollisionInfo;
+vector<SSphereCollisionInfo> gBlockingSpheresCollisionInfo;
 
 
 float frameTime;

@@ -8,12 +8,6 @@ bool SceneSetup()
 {
 
 	gCollisionInfoData.erase(gCollisionInfoData.begin(), gCollisionInfoData.end());
-	gMovingSpheres.erase(gMovingSpheres.begin(), gMovingSpheres.end());
-	gBlockingSpheres.erase(gBlockingSpheres.begin(), gBlockingSpheres.end());
-
-	gCollisionInfoData.reserve(KNumOfSpheres * 2);
-	gMovingSpheres.reserve(KNumOfSpheres / 2);
-	gBlockingSpheres.reserve(KNumOfSpheres / 2);
 
 	gMovingSpheresCollisionInfo.erase(gMovingSpheresCollisionInfo.begin(), gMovingSpheresCollisionInfo.end());
 	gBlockingSpheresCollisionInfo.erase(gBlockingSpheresCollisionInfo.begin(), gBlockingSpheresCollisionInfo.end());
@@ -27,18 +21,54 @@ bool SceneSetup()
 	const auto sphereMesh = myEngine->LoadMesh("sphere.x");
 	const auto blockedMesh = myEngine->LoadMesh("SphereBlocked.x");
 #endif
+	
+	// Get all the spheres pointers and arrange them into the grid
 
-	for (auto i = 0u; i < KNumOfSpheres; ++i)
+	for (auto i = 0; i < KNumOfSpheres / 2; ++i)
 	{
-		SSphereCollisionInfo s;
+		SSphereCollisionInfo* s = new SSphereCollisionInfo;
 		SSphere ss;
 
-		s.mRadius = Random(0.5f, KRangeRadius);
+		s->mRadius = Random(0.5f, KRangeRadius);
+		s->index = i;
 		ss.mColour = CVector3::Rand();
 		ss.mName = std::to_string(i);
 
-		if (i >= KNumOfSpheres / 2)
-		{
+#ifdef _3D
+		s.mVelocity = CVector3::Rand() * KRangeVelocity;
+		s.mPosition = CVector3::Rand() * (KRangeSpawn - s.mRadius);
+		s.mPosition += CVector3::Rand();
+		s.mPosition %= KRangeSpawn;
+#else
+		s->mVelocity = CVector2::Rand() * KRangeVelocity;
+		s->mPosition = CVector2::Rand() * (KRangeSpawn - s->mRadius);
+		s->mPosition += CVector2::Rand();
+		s->mPosition %= KRangeSpawn;
+#endif
+
+
+
+#ifdef _VISUALIZATION_ON
+		ss.mModel = blockedMesh->CreateModel();
+		ss.mModel->Scale(s->mRadius);
+#endif
+			gBlockingSpheres[i] = ss;
+			gBlockingSpheresCollisionInfo.push_back(*s);
+
+			auto ptr = s;
+			gGrid.Add(ptr);
+	}
+
+	for (auto i = 0; i < KNumOfSpheres / 2; ++i)
+	{
+
+		SSphereCollisionInfo* s = new SSphereCollisionInfo;
+		SSphere ss;
+
+		s->mRadius = Random(0.5f, KRangeRadius);
+		s->index = i;
+		ss.mColour = CVector3::Rand();
+		ss.mName = std::to_string(i);
 
 #ifdef _3D
 			s.mVelocity = CVector3::Rand() * KRangeVelocity;
@@ -46,63 +76,22 @@ bool SceneSetup()
 			s.mPosition += CVector3::Rand();
 			s.mPosition %= KRangeSpawn;
 #else
-			s.mVelocity = CVector2::Rand() * KRangeVelocity;
-			s.mPosition = CVector2::Rand() * (KRangeSpawn - s.mRadius);
-			s.mPosition += CVector2::Rand();
-			s.mPosition %= KRangeSpawn;
+			s->mVelocity = CVector2::Rand() * KRangeVelocity;
+			s->mPosition = CVector2::Rand() * (KRangeSpawn - s->mRadius);
+			s->mPosition += CVector2::Rand();
+			s->mPosition %= KRangeSpawn;
 #endif
 
 
 
 #ifdef _VISUALIZATION_ON
 			ss.mModel = sphereMesh->CreateModel();
-			ss.mModel->Scale(s.mRadius);
+			ss.mModel->Scale(s->mRadius);
 #endif
-			gMovingSpheres.push_back(ss);
-			gMovingSpheresCollisionInfo.push_back(s);
-		}
-		else
-		{
-
-#ifdef _3D
-			s.mVelocity = CVector3::Rand() * KRangeVelocity;
-			s.mPosition = CVector3::Rand() * (KRangeSpawn - s.mRadius);
-			s.mPosition += CVector3::Rand();
-			s.mPosition %= KRangeSpawn;
-#else
-			s.mVelocity = CVector2::Rand() * KRangeVelocity;
-			s.mPosition = CVector2::Rand() * (KRangeSpawn - s.mRadius);
-			s.mPosition += CVector2::Rand();
-			s.mPosition %= KRangeSpawn;
-#endif
-
-
-#ifdef _VISUALIZATION_ON
-			ss.mModel = blockedMesh->CreateModel();
-			ss.mModel->Scale(s.mRadius);
-#endif
-
-			gBlockingSpheres.push_back(ss);
-			gBlockingSpheresCollisionInfo.push_back(s);
-		}
-	}
-
-	std::sort(gBlockingSpheresCollisionInfo.begin(), gBlockingSpheresCollisionInfo.end(), [](const SSphereCollisionInfo& a, const SSphereCollisionInfo& b) { return a.mPosition.x < b.mPosition.x; });
-
-	// Get all the spheres pointers and arrange them into the grid
-
-	for (auto i = 0; i < KNumOfSpheres / 2; ++i)
-	{
-		auto s = &gBlockingSpheresCollisionInfo[i];
-			s->index = -i;
-		gGrid.Add(s);
-	}
-
-	for (auto i = 0; i < KNumOfSpheres / 2; ++i)
-	{
-		auto s = &gMovingSpheresCollisionInfo[i];
-		s->index = i;
-		gGrid.Add(s);
+			gMovingSpheres[i] = ss;
+			gMovingSpheresCollisionInfo.push_back(*s);
+			auto ptr = s;
+		gGrid.Add(ptr);
 	}
 
 	return true;
@@ -175,22 +164,24 @@ void Work(SSphereCollisionInfo* start, SSphereCollisionInfo* end)
 
 		auto c = CollisionSpatialPartitioning(sphere, surfaceNormal);
 
-		if (c && c!= sphere)
+		if (c)
 		{
 			sphere->mPosition -= sphere->mVelocity * totalTime;
 			sphere->mVelocity = Reflect(sphere->mVelocity, surfaceNormal);
 
-			auto j = c->index;
-			auto i = sphere->index;
+			if (c != sphere)
+			{
+				auto j = c->index;
+				auto i = sphere->index;
 
 
-			if (j < 0) gBlockingSpheres[std::abs(j)].mHealth -= 20;
-			else gMovingSpheres[std::abs(j)].mHealth -= 20;
+				if (j < 0) gBlockingSpheres[std::abs(j)].mHealth -= 20;
+				else gMovingSpheres[std::abs(j)].mHealth -= 20;
 
 #ifdef _LOG
-			Log(&gMovingSpheres[i], &(j < 0 ? gBlockingSpheres : gMovingSpheres)[std::abs(j)]);
+				Log(&gMovingSpheres[i], &(j < 0 ? gBlockingSpheres : gMovingSpheres)[std::abs(j)]);
 #endif
-
+			}
 		}
 		else
 			sphere->mPosition += sphere->mVelocity * totalTime;
