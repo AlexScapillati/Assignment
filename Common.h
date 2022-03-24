@@ -6,10 +6,12 @@
 #include <unistd.h>
 #endif
 
+class Grid;
 using namespace std;
 
 #include <condition_variable>
 #include <thread>
+#include <concurrent_vector.h>
 #include <vector>
 
 #include "Math/CVector2.h"
@@ -26,7 +28,7 @@ using namespace std;
 //---------------------------------------------------------------
 
 
-//#define _VISUALIZATION_ON
+#define _VISUALIZATION_ON
 //#define _LOG
 //#define _3D
 
@@ -68,11 +70,13 @@ struct SSphereCollisionInfo
 	CVector2 mVelocity;
 	CVector2 mPosition;
 #endif
-
-	int indexInPartition;
-	int index; // to keep track of its position in the array , negative for the blocking spheres, positive for the moving spheres
-	std::vector<SSphereCollisionInfo*>* mPartition; // to keep track of the partition this sphere is in
 	float mRadius;
+
+	// Spatial partitioning helper code
+
+	int indexInPartition = -1;
+	int index; // to keep track of its position in the array , negative for the blocking spheres, positive for the moving spheres
+	std::vector<SSphereCollisionInfo*>* mPartition = nullptr; // to keep track of the partition this sphere is in
 };
 
 
@@ -116,12 +120,12 @@ struct CollisionInfoData
 
 std::vector<CollisionInfoData> gCollisionInfoData;
 
-bool bUsingMultithreading = true;
+bool bUsingMultithreading = false;
 
-constexpr uint32_t KNumOfSpheresSQRD = 1000;
+constexpr uint32_t KNumOfSpheresSQRD = 100;
 constexpr uint32_t KNumOfSpheres = KNumOfSpheresSQRD * KNumOfSpheresSQRD;
-constexpr float KRangeSpawn = 500000.f;
-constexpr uint32_t KNumPartitions = 100;
+constexpr float KRangeSpawn = 5000.f;
+constexpr uint32_t KNumPartitions = 20;
 constexpr int kPartitionSize = (int)KRangeSpawn / KNumPartitions * 2;
 constexpr float KRangeVelocity = 50.f;
 constexpr float KRangeRadius = 2.f;
@@ -143,6 +147,7 @@ SSphere gBlockingSpheres[KNumOfSpheres/2];
 vector<SSphereCollisionInfo> gMovingSpheresCollisionInfo;
 vector<SSphereCollisionInfo> gBlockingSpheresCollisionInfo;
 
+Grid* gGrid;
 
 float frameTime;
 float renderingTime;

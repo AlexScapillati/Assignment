@@ -30,15 +30,15 @@ bool SceneSetup()
 		SSphere ss;
 
 		s->mRadius = Random(0.5f, KRangeRadius);
-		s->index = i;
+		s->index = -i;
 		ss.mColour = CVector3::Rand();
 		ss.mName = std::to_string(i);
 
 #ifdef _3D
-		s.mVelocity = CVector3::Rand() * KRangeVelocity;
-		s.mPosition = CVector3::Rand() * (KRangeSpawn - s.mRadius);
-		s.mPosition += CVector3::Rand();
-		s.mPosition %= KRangeSpawn;
+		s->mVelocity = CVector3::Rand() * KRangeVelocity;
+		s->mPosition = CVector3::Rand() * (KRangeSpawn - s->mRadius);
+		s->mPosition += CVector3::Rand();
+		s->mPosition %= KRangeSpawn;
 #else
 		s->mVelocity = CVector2::Rand() * KRangeVelocity;
 		s->mPosition = CVector2::Rand() * (KRangeSpawn - s->mRadius);
@@ -54,9 +54,7 @@ bool SceneSetup()
 #endif
 			gBlockingSpheres[i] = ss;
 			gBlockingSpheresCollisionInfo.push_back(*s);
-
-			auto ptr = s;
-			gGrid.Add(ptr);
+			gGrid->Add(&gBlockingSpheresCollisionInfo.back());
 	}
 
 	for (auto i = 0; i < KNumOfSpheres / 2; ++i)
@@ -71,10 +69,10 @@ bool SceneSetup()
 		ss.mName = std::to_string(i);
 
 #ifdef _3D
-			s.mVelocity = CVector3::Rand() * KRangeVelocity;
-			s.mPosition = CVector3::Rand() * (KRangeSpawn - s.mRadius);
-			s.mPosition += CVector3::Rand();
-			s.mPosition %= KRangeSpawn;
+			s->mVelocity =	CVector3::Rand() * KRangeVelocity;
+			s->mPosition =  CVector3::Rand() * (KRangeSpawn - s->mRadius);
+			s->mPosition += CVector3::Rand();
+			s->mPosition %= KRangeSpawn;
 #else
 			s->mVelocity = CVector2::Rand() * KRangeVelocity;
 			s->mPosition = CVector2::Rand() * (KRangeSpawn - s->mRadius);
@@ -90,31 +88,15 @@ bool SceneSetup()
 #endif
 			gMovingSpheres[i] = ss;
 			gMovingSpheresCollisionInfo.push_back(*s);
-			auto ptr = s;
-		gGrid.Add(ptr);
+			gGrid->Add(&gMovingSpheresCollisionInfo.back());
 	}
 
 	return true;
 }
 
 
-std::mutex m;
 void UpdateSpheresInGrid(SSphereCollisionInfo* s)
 {
-	auto p = gGrid.GetPartition(s->mPosition);
-	auto p2 = s->mPartition;
-	if (p != p2)
-	{
-		std::unique_lock<std::mutex> l(m, std::try_to_lock);
-
-		while (!l.owns_lock()) {}
-
-		auto oldPart = s->mPartition;
-		std::swap(s, s->mPartition->back());
-		s->mPartition->pop_back();
-		gGrid.Add(s);
-
-	}
 }
 
 
@@ -173,10 +155,10 @@ void Work(SSphereCollisionInfo* start, SSphereCollisionInfo* end)
 			{
 				auto j = c->index;
 				auto i = sphere->index;
+				
+				(j < 0 ? gBlockingSpheres : gMovingSpheres)[std::abs(j)].mHealth -= 20;
 
-
-				if (j < 0) gBlockingSpheres[std::abs(j)].mHealth -= 20;
-				else gMovingSpheres[std::abs(j)].mHealth -= 20;
+				gMovingSpheres[i].mHealth -= 20;
 
 #ifdef _LOG
 				Log(&gMovingSpheres[i], &(j < 0 ? gBlockingSpheres : gMovingSpheres)[std::abs(j)]);
@@ -186,7 +168,16 @@ void Work(SSphereCollisionInfo* start, SSphereCollisionInfo* end)
 		else
 			sphere->mPosition += sphere->mVelocity * totalTime;
 
-		//UpdateSpheresInGrid(sphere);
+		// Update the sphere position in the partition after moved
+
+		auto p = gGrid->GetPartition(sphere->mPosition);
+		auto p2 = sphere->mPartition;
+		if (p != p2)
+		{
+			gGrid->RemoveFromPartition(sphere);
+			auto ptr = sphere;
+			gGrid->Add(ptr);
+		}
 
 		++sphere;
 	}
@@ -276,7 +267,6 @@ void UpdateSpheres()
 }
 
 
-
 bool GameLoop()
 {
 	UpdateSpheres();
@@ -296,6 +286,7 @@ bool GameLoop()
 		gMovingSpheres[i].mModel->SetPosition(gMovingSpheresCollisionInfo[i].mPosition.x, gMovingSpheresCollisionInfo[i].mPosition.y,gMovingSpheresCollisionInfo[i].mPosition.z);
 	}
 #else
+
 	for (int i = 0u; i < KNumOfSpheres / 2; ++i)
 	{
 		gBlockingSpheres[i].mModel->SetPosition(gBlockingSpheresCollisionInfo[i].mPosition.x, gBlockingSpheresCollisionInfo[i].mPosition.y, 0.0f);
@@ -327,6 +318,10 @@ void main()
 {
 
 	srand(time(0));
+	cin.tie(NULL);
+	ios_base::sync_with_stdio(false);
+
+	gGrid = new Grid();
 
 	//---------------------------------------------------------------------------------------------------------------------
 
@@ -425,5 +420,7 @@ void main()
 		// Start each worker thread running the work method. Note the way to construct std::thread to run a member function
 		mUpdateSpheresWorkers[i].first.thread.detach();
 	}
+
+	delete gGrid;
 
 }

@@ -97,10 +97,6 @@ float CVector2::InverseMagnitude() const
 }
 
 
-CVector2 CVector2::Rand()
-{
-	return CVector2(Random(-1.0f,1.0f), Random(-1.0f,1.0f));
-}
 
 CVector2 CVector2::Up()
 {
@@ -193,4 +189,9 @@ CVector2 Reflect(const CVector2& vec, const CVector2& surfaceNormal)
 bool IsZero(const CVector2& v)
 {
 	return std::abs(v.x) + std::abs(v.y) < EPSILON;
+}
+
+CVector2 CVector2::Rand()
+{
+	return CVector2(Random(-1.0f, 1.0f), Random(-1.0f, 1.0f));
 }

@@ -52,6 +52,11 @@ CVector3& CVector3::operator*= (const float s)
 	return *this;
 }
 
+CVector3 CVector3::Rand()
+{
+	return CVector3(Random(-1.0f, 1.0f), Random(-1.0f, 1.0f), Random(-1.0f, 1.0f));
+}
+
 //Direct access with []
 float CVector3::operator[](const int index) const
 {
@@ -70,10 +75,6 @@ float CVector3::operator[](const int index) const
 	return NULL;
 }
 
-CVector3& CVector3::Rand()
-{
-	return CVector3(Random(-1.0f, 1.0f), Random(-1.0f, 1.0f), Random(-1.0f,1.0f));
-}
 
 float CVector3::Magnitude() const
 {

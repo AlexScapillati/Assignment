@@ -12,9 +12,9 @@ class CVector3
 	// Concrete class - public access
 public:
 	// Vector components
-	float x{};
-	float y{};
-	float z{};
+	float x;
+	float y;
+	float z;
 
 	/*-----------------------------------------------------------------------------------------
 		Constructors
@@ -73,10 +73,9 @@ public:
 	// Multiply vector by scalar (scales vector);
 	CVector3& operator*= (float s);
 
+	static CVector3 Rand();
+
 	float operator[](int index) const;
-
-	static CVector3& Rand();
-
 
 	float Magnitude() const;
 };
